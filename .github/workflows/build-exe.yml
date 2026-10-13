@@ -1,1 +1,40 @@
 
+name: Compiler HTML en EXE Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Recuperer le projet
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Preparer l'application
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force app | Out-Null
+          Copy-Item index.html app/index.html
+          Set-Content package.json '{"name":"mon-application","version":"1.0.0","main":"main.js","scripts":{"start":"electron ."}}'
+          Set-Content main.js 'const { app, BrowserWindow } = require("electron"); const path = require("path"); app.whenReady().then(() => { const win = new BrowserWindow({ width: 1200, height: 800 }); win.loadFile(path.join(__dirname, "app", "index.html")); });'
+
+      - name: Installer Electron et fabriquer EXE
+        run: |
+          npm install --save-dev electron electron-builder
+          npx electron-builder --win portable
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Publier le fichier EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-windows
+          path: dist/*.exe
+          
